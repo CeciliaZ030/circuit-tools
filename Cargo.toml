@@ -6,13 +6,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git", tag = "v2023_02_02" }
+halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git", tag = "v2023_04_20" }
 plotters = { version = "0.3.0", optional = true }
-zkevm-circuits = {git = "https://github.com/privacy-scaling-explorations/zkevm-circuits.git"}
+zkevm-circuits = {git = "https://github.com/privacy-scaling-explorations/zkevm-circuits.git", branch = "main" }
+eth-types =  {git = "https://github.com/privacy-scaling-explorations/zkevm-circuits.git", package = "eth-types", branch = "main" }
+zkevm_gadgets = {git = "https://github.com/privacy-scaling-explorations/zkevm-circuits.git", package = "gadgets", branch = "main" }
 rand = "0.8"
+ff = "0.12"
+rand_core = { version = "0.6", default-features = false }
+itertools = "0.10.3"
+
 
 [features]
-default = ["dev-graph", "zkevm-circuits/test"]
+default = ["dev-graph"]
 dev-graph = ["halo2_proofs/dev-graph", "plotters"]
 
 [[example]]
