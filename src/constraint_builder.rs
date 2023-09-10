@@ -369,7 +369,7 @@ impl<F: Field, C: CellType> ConstraintBuilder<F, C> {
         self.equalities
             .iter()
             .for_each(|c| {
-                meta.enable_equality(c.clone())}
+                meta.enable_equality(*c)}
             );
     }
     
@@ -1387,7 +1387,7 @@ macro_rules! circuit {
         #[allow(unused_macros)]
         macro_rules! not {
             ($expr:expr) => {{
-                crate::util::not::expr($expr.expr())
+                $crate::util::not::expr($expr.expr())
             }};
         }
 

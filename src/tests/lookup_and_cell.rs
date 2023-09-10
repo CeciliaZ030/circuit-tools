@@ -83,7 +83,7 @@ impl<F: Field> TestConfig<F> {
                     // Store random linear combination of c,d in a phase2 cell
                     let rlc = c.expr() + d.expr() * c!(r1);
                     // Correct store during assignment is garenteed by this equality constriant
-                    require!(e.expr() => rlc.clone());
+                    require!(e.expr() => rlc);
 
                     // Perform dynamic lookup on cell e and its corresponding value
                     // we do this just for demo: if e == rlc then {c} is a subset of {rlc}
@@ -144,8 +144,8 @@ impl<F: Field> Circuit<F> for TestCircuit<F> {
         // dummy column for phase1 challange
         meta.advice_column_in(FirstPhase);
         let randomness = meta.challenge_usable_after(FirstPhase); 
-        let config = TestConfig::new(meta, randomness);
-        config
+        
+        TestConfig::new(meta, randomness)
     }
 
     fn synthesize(
