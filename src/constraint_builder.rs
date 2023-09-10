@@ -522,10 +522,12 @@ impl<F: Field, C: CellType> ConstraintBuilder<F, C> {
                     self.query_one(cell_type)
                 };
                 let name = format!("{} (stored expression)", name);
-                self.constraints.push((
-                    Box::leak(name.clone().into_boxed_str()),
-                    cell.expr() - expr.clone(),
-                ));
+                let equality = if self.region_id == 0 {
+                    (cell.expr() - expr.clone()) * self.get_condition_expr()
+                } else {
+                    cell.expr() - expr.clone()
+                };
+                self.constraints.push((Box::leak(name.clone().into_boxed_str()), equality));
                 self.stored_expressions
                     .entry(self.region_id)
                     .or_insert_with(Vec::new)

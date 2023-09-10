@@ -1,7 +1,7 @@
 use eth_types::Field;
 use zkevm_circuits::{util::query_expression};
 use zkevm_gadgets::impl_expr;
-use crate::{util::Scalar, cell_manager::{CellManager, Cell}};
+use crate::{util::{Scalar, rlc}, cell_manager::{CellManager, Cell}, cached_region::CachedRegion};
 use halo2_proofs::{
     plonk::{Circuit, ConstraintSystem, Expression, Fixed, Column, FirstPhase, Challenge, Error}, 
     circuit::{SimpleFloorPlanner, Layouter, Value},
@@ -30,11 +30,17 @@ impl_expr!(TableTag);
 pub enum TestCellType {
     StoragePhase1,
     StoragePhase2,
+    CombinedLookup,
 }
 impl CellType for TestCellType{
     type TableType = TableTag;
 
-    fn lookup_table_type(&self) -> Option<Self::TableType> {Some(TableTag::Fixed)}
+    fn lookup_table_type(&self) -> Option<Self::TableType> {
+        match self {
+            TestCellType::CombinedLookup => Some(TableTag::Fixed),
+            _ => None,
+        }
+    }
     fn byte_type() -> Option<Self> {None}
     fn create_type(_id: usize) -> Self {unreachable!()}
     fn storage_for_phase(phase: u8) -> Self {
@@ -59,13 +65,14 @@ impl<F: Field> TestConfig<F> {
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-        let r0 = query_expression(meta, |meta| meta.query_challenge(r0));
-        let mut cb: ConstraintBuilder<F, TestCellType> =  ConstraintBuilder::new(4,  None, Some(r0));
+        let r0 = query_expression(meta, |meta| meta.query_challenge(r0.clone()));
+        let mut cb: ConstraintBuilder<F, TestCellType> =  ConstraintBuilder::new(4,  None, Some(r0.clone()));
         cb.load_table(meta, TableTag::Fixed, &fixed_table);
 
         let mut cm = CellManager::new(5, 0);
         cm.add_columns(meta, &mut cb, TestCellType::StoragePhase1, 1, false, 1);
         cm.add_columns(meta, &mut cb, TestCellType::StoragePhase2, 2, false, 1);
+        cm.add_columns(meta, &mut cb, TestCellType::CombinedLookup, 2, false, 1);
         cb.set_cell_manager(cm);
         
         let a = cb.query_default();
@@ -79,6 +86,9 @@ impl<F: Field> TestConfig<F> {
                 ifx!(f!(q_enable) => {
                     // Lookup the sum of a,b and the sum of c,d in the fixed_table
                     require!((a.expr() + b.expr(), c.expr() + d.expr()) => @cb.table(TableTag::Fixed));
+                    // Lookup with rlc and degree reduction, (a+b)+r0*(c+d) =>> t0+r0*t1
+                    let combined = rlc::expr(&[a.expr() + b.expr(), c.expr() + d.expr()], r0);
+                    require!((combined) =>> @TestCellType::CombinedLookup);
 
                     // Store random linear combination of c,d in a phase2 cell
                     let rlc = c.expr() + d.expr() * c!(r1);
@@ -105,21 +115,25 @@ impl<F: Field> TestConfig<F> {
     pub fn assign(
         &self, 
         layouter: &mut impl Layouter<F>,
-        _rand: F,
+        r0: Value<F>,
     ) -> Result<(), Error> {
-        let mut rand = F::ZERO;
-        layouter.get_challenge(self.rand).map(|r| rand = r);
+        let mut r1 = F::ZERO;
+        layouter.get_challenge(self.rand).map(|r| r1 = r);
         layouter.assign_region(
             || "Test", 
             |mut region| {
-                assignf!(region, (self.q_enable, 0) => true.scalar());
+                let mut region = CachedRegion::new(&mut region, 0.scalar());
+                region.push_region(0, 0);
+
+                assignf!(&mut region, (self.q_enable, 0) => true.scalar());
                 let (a, b, c, d,  e) = &self.cells;
-                assign!(region, a, 0 => 1.scalar())?;
-                assign!(region, b, 0 => 2.scalar())?;
-                assign!(region, c, 0 => 3.scalar())?;
-                assign!(region, d, 0 => 4.scalar())?;
-                let rlc = F::from(3) + F::from(4) * rand;
-                assign!(region, e, 0 => rlc)?;
+                assign!(&mut region, a, 0 => 1.scalar())?;
+                assign!(&mut region, b, 0 => 2.scalar())?;
+                assign!(&mut region, c, 0 => 3.scalar())?;
+                assign!(&mut region, d, 0 => 4.scalar())?;
+                let rlc = F::from(3) + F::from(4) * r1;
+                assign!(&mut region, e, 0 => rlc)?;
+                region.assign_stored_expressions(&self.cb, &[r0])?;
                 Ok(())
             }
         )
@@ -132,7 +146,7 @@ struct TestCircuit<F> {
 }
 
 impl<F: Field> Circuit<F> for TestCircuit<F> {
-    type Config = TestConfig<F>;
+    type Config = (TestConfig<F>, Challenge);
     type FloorPlanner = SimpleFloorPlanner;
     type Params = ();
 
@@ -143,21 +157,23 @@ impl<F: Field> Circuit<F> for TestCircuit<F> {
     fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
         // dummy column for phase1 challange
         meta.advice_column_in(FirstPhase);
-        let randomness = meta.challenge_usable_after(FirstPhase); 
+        let challenge = meta.challenge_usable_after(FirstPhase); 
         
-        TestConfig::new(meta, randomness)
+        (TestConfig::new(meta, challenge), challenge)
     }
 
     fn synthesize(
         &self, 
-        config: Self::Config, 
+        (config, challenge): Self::Config, 
         mut layouter: impl Layouter<F>
-    ) -> Result<(), halo2_proofs::plonk::Error> {
+    ) -> Result<(), Error> {
         layouter.assign_region(|| "fixed table", |mut region| {
             assignf!(region, (config.fixed_table[0], 0) => (1 + 2).scalar())?;
             assignf!(region, (config.fixed_table[1], 0) => (3 + 4).scalar())?;
             Ok(())
         });
+        let r0 =  layouter.get_challenge(challenge);
+        config.assign(&mut layouter, r0)?;
         Ok(())
     }
 }
