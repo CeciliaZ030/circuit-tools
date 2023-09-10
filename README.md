@@ -55,6 +55,26 @@ register2.load(cb, &[c1, d1, 123.expr()]);
 register1.load(cb, &[a0, b1]);
 
 ```
+### Assignment: Cached Region
+Used to backtrack the intermediate cells queried in by Constrinat Builder during degree reduction. After `a * b * (c + d)` being split into `x = a * b` and `y = c + d`, the system need to account for the assignment of intermediate cells `x` and `y` while the prover only need to assign `a, b, c, d` based on the execution trace. Hence, Cached Region iterates over all stored expressions and recursively find the prover's assignment to calculate the intermediate values.
+```
+layouter.get_challenge(self.rand).map(|r| r1 = r);
+layouter.assign_region(
+    || "Test", 
+    |mut region| {
+        let mut region = CachedRegion::new(&mut region, 0.scalar());
+        region.push_region(0, 0);
+
+        let (a, b, c, d,  e) = &self.cells;
+        assign!(&mut region, a, 0 => 1.scalar())?;
+        assign!(&mut region, b, 0 => 2.scalar())?;
+        assign!(&mut region, c, 0 => 3.scalar())?;
+        assign!(&mut region, d, 0 => 4.scalar())?;
+        region.assign_stored_expressions(&self.cb, &[r0])?;
+        Ok(())
+    }
+)
+```
 ## Workflow
 Must specify cell type that implement trait `CellType` to satisfy the generic argument of `ConstraintBuilder<F, C: CellType>`. Can also declear a `TableType` to tag corresponding table for column-to-table lookups.
 ```
