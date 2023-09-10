@@ -2,7 +2,7 @@ use eth_types::Field;
 use crate::util::Scalar;
 use halo2_proofs::{
     plonk::{Circuit, ConstraintSystem, Advice, Fixed, Column, FirstPhase, Challenge, Error, SecondPhase}, 
-    circuit::{SimpleFloorPlanner, Layouter, layouter, Value},
+    circuit::{SimpleFloorPlanner, Layouter, Value},
     poly::Rotation,
 };
 

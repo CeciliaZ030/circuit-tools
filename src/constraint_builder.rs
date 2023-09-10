@@ -7,7 +7,7 @@ use std::{
 };
 use zkevm_circuits::table::LookupTable;
 use crate::util::{rlc, query_expression, and, sum, Expr, Scalar};
-use eth_types::{Field, Word};
+use eth_types::{Field};
 use halo2_proofs::plonk::{ConstraintSystem, Expression, Column, Advice};
 use itertools::Itertools;
 

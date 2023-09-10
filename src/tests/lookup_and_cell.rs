@@ -1,10 +1,10 @@
 use eth_types::Field;
-use zkevm_circuits::{evm_circuit::table::FixedTableTag, util::query_expression};
+use zkevm_circuits::{util::query_expression};
 use zkevm_gadgets::impl_expr;
 use crate::{util::Scalar, cell_manager::{CellManager, Cell}};
 use halo2_proofs::{
-    plonk::{Circuit, ConstraintSystem, Expression, Advice, Fixed, Column, FirstPhase, Challenge, Error, SecondPhase}, 
-    circuit::{SimpleFloorPlanner, Layouter, layouter, Value},
+    plonk::{Circuit, ConstraintSystem, Expression, Fixed, Column, FirstPhase, Challenge, Error}, 
+    circuit::{SimpleFloorPlanner, Layouter, Value},
     poly::Rotation,
 };
 
@@ -36,7 +36,7 @@ impl CellType for TestCellType{
 
     fn lookup_table_type(&self) -> Option<Self::TableType> {Some(TableTag::Fixed)}
     fn byte_type() -> Option<Self> {None}
-    fn create_type(id: usize) -> Self {unreachable!()}
+    fn create_type(_id: usize) -> Self {unreachable!()}
     fn storage_for_phase(phase: u8) -> Self {
         match phase {
             1 => Self::StoragePhase1,
@@ -105,7 +105,7 @@ impl<F: Field> TestConfig<F> {
     pub fn assign(
         &self, 
         layouter: &mut impl Layouter<F>,
-        rand: F,
+        _rand: F,
     ) -> Result<(), Error> {
         let mut rand = F::ZERO;
         layouter.get_challenge(self.rand).map(|r| rand = r);

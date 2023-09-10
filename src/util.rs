@@ -1,4 +1,4 @@
-use eth_types::{Field, ToAddress, Word};
+use eth_types::{Field};
 use halo2_proofs::circuit::Value;
 pub use zkevm_circuits::util::*;
 pub use zkevm_gadgets::util::*;
