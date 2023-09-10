@@ -55,3 +55,36 @@ register2.load(cb, &[c1, d1, 123.expr()]);
 register1.load(cb, &[a0, b1]);
 
 ```
+## Workflow
+Must specify cell type that implement trait `CellType` to satisfy the generic argument of `ConstraintBuilder<F, C: CellType>`. Can also declear a `TableType` to tag corresponding table for column-to-table lookups.
+```
+pub enum TableTag {
+    Fixed,
+    Dyn
+}
+pub enum TestCellType {
+    StoragePhase1,
+    Lookup,
+}
+impl CellType for TestCellType{
+    type TableType = TableTag;
+
+    fn lookup_table_type(&self) -> Option<Self::TableType> {
+        match self {
+            TestCellType::Lookup => Some(TableTag::Fixed),
+            _ => None,
+        }
+    }
+    fn byte_type() -> Option<Self> {None}
+    fn create_type(_id: usize) -> Self {unreachable!()}
+    fn storage_for_phase(phase: u8) -> Self {
+        match phase {
+            1 => Self::StoragePhase1,
+            _ => unreachable!()
+        }
+    }
+}
+impl Default for TestCellType {
+    fn default() -> Self {Self::StoragePhase1}
+}
+```
