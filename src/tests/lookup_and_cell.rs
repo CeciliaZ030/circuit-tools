@@ -22,7 +22,6 @@ pub struct TestConfig<F>{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TableTag {
     Fixed,
-    Dyn
 }
 impl_expr!(TableTag);
 
@@ -30,14 +29,14 @@ impl_expr!(TableTag);
 pub enum TestCellType {
     StoragePhase1,
     StoragePhase2,
-    CombinedLookup,
+    Lookup,
 }
 impl CellType for TestCellType{
     type TableType = TableTag;
 
     fn lookup_table_type(&self) -> Option<Self::TableType> {
         match self {
-            TestCellType::CombinedLookup => Some(TableTag::Fixed),
+            TestCellType::Lookup => Some(TableTag::Fixed),
             _ => None,
         }
     }
@@ -72,7 +71,7 @@ impl<F: Field> TestConfig<F> {
         let mut cm = CellManager::new(5, 0);
         cm.add_columns(meta, &mut cb, TestCellType::StoragePhase1, 1, false, 1);
         cm.add_columns(meta, &mut cb, TestCellType::StoragePhase2, 2, false, 1);
-        cm.add_columns(meta, &mut cb, TestCellType::CombinedLookup, 2, false, 1);
+        cm.add_columns(meta, &mut cb, TestCellType::Lookup, 2, false, 1);
         cb.set_cell_manager(cm);
         
         let a = cb.query_default();
@@ -88,7 +87,7 @@ impl<F: Field> TestConfig<F> {
                     require!((a.expr() + b.expr(), c.expr() + d.expr()) => @cb.table(TableTag::Fixed));
                     // Lookup with rlc and degree reduction, (a+b)+r0*(c+d) =>> t0+r0*t1
                     let combined = rlc::expr(&[a.expr() + b.expr(), c.expr() + d.expr()], r0);
-                    require!((combined) =>> @TestCellType::CombinedLookup);
+                    require!((combined) =>> @TestCellType::Lookup);
 
                     // Store random linear combination of c,d in a phase2 cell
                     let rlc = c.expr() + d.expr() * c!(r1);
@@ -97,12 +96,13 @@ impl<F: Field> TestConfig<F> {
 
                     // Perform dynamic lookup on cell e and its corresponding value
                     // we do this just for demo: if e == rlc then {c} is a subset of {rlc}
-                    require!((TableTag::Dyn.expr(), e.expr()) => @vec![TableTag::Dyn.expr(), rlc]);
+                    require!((e.expr()) => @vec![rlc]);
                    
                 });
             });
             cb.build_constraints()
         });
+        cb.build_lookups(meta);
         TestConfig { 
             q_enable,
             rand: r1,
