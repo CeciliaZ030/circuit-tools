@@ -37,5 +37,21 @@ require!(c.expr() => a.expr() + b.expr() * challenge.expr());
 require!((a.expr(), b.expr()) =>> @TestCellType::Lookup);
 
 ```
-
 ### Memory: Dynamic Lookup
+Abstraction over using dynamic lookup to prove RW access in RAM. Stores to dynamic table to resemble WRITE and add lookups to represent READ. Lookup operation `(idx, r0, r1) => (rdx, w0, w1)` returns true if and only if the prover access the writen data at anticipated position correctly.
+```
+let mut memory = Memory::new();
+memory.add_rw(meta, &mut cb.base, &mut state_cm, MyCellType::Mem1, 1);
+memory.add_rw(meta, &mut cb.base, &mut state_cm, MyCellType::Mem2, 1);
+
+let register1 = memory[MyCellType::Mem1];
+let register2 = memory[MyCellType::Mem2];
+
+register1.store(cb, &[a0, b0]);
+register2.store(cb, &[c0, d9, 123.expr()]);
+
+// ... long time later ...
+register2.load(cb, &[c1, d1, 123.expr()]);
+register1.load(cb, &[a0, b1]);
+
+```
