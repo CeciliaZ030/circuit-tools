@@ -88,9 +88,22 @@ impl Default for TestCellType {
     fn default() -> Self {Self::StoragePhase1}
 }
 ```
-Initialize the Constraint Builder and Cell Manager with optional challenge that's used in RLC to conbime multi-columns lookups. The Cell Manager needs a max height and this is usually the height of your Halo2 gate; a offset is also needed to query cell from columns. Offset should be set to 0 in usual case.
+Initialize the Constraint Builder and Cell Manager with optional challenge that's used in RLC to conbime multi-columns lookups. The Cell Manager needs a max height and this is usually the height of your Halo2 gate; a offset is also needed to query cell from columns. Offset should be set to 0 in usual case. Load fixed table in to Constraint Builder with corresponding tag and initialized columns with the cell manager with `(cell_type: MyCellType, phase: u8, permuation: bool, num: usize)`.
 ```
 let mut cm = CellManager::new(5, 0);
 let mut cb: ConstraintBuilder<F, TestCellType> =  ConstraintBuilder::new(4,  Some(cm), Some(challenge));
-
+cb.load_table(meta, TableTag::Fixed, &fixed_table);
+cm.add_columns(meta, &mut cb, TestCellType::StoragePhase1, 1, true, 1);
+cm.add_columns(meta, &mut cb, TestCellType::Lookup, 2, false, 1);
 ```
+In Halo2's gate API, use macro to config your circuit! Remember to call `build_constraints()` to return the constraints expression for the gate, finally calling `build_lookups(meta)` that turned into `meta.lookup_any(..) in Halo2.
+```
+meta.create_gate("Test", |meta| {
+    circuit!([meta, cb], {
+        // ... circuit ...
+    });
+    cb.build_constraints()
+});
+cb.build_lookups(meta);
+```
+
