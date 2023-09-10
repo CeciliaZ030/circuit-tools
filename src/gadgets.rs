@@ -6,12 +6,7 @@ use halo2_proofs::{
     circuit::Value,
     plonk::{Error, Expression}, 
 };
-// use super::util::Word;
 
-// use zkevm_circuits::{
-//     evm_circuit::util::{from_bytes, pow_of_two, transpose_val_ret},
-//     util::word::{Word, WordExpr},
-// };
 
 use crate::util::{transpose_val_ret, pow_of_two, from_bytes};
 

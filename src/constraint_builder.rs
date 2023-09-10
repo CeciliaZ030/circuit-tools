@@ -7,7 +7,7 @@ use std::{
 };
 use zkevm_circuits::table::LookupTable;
 use crate::util::{rlc, query_expression, and, sum, Expr, Scalar};
-use eth_types::{Field, Word};
+use eth_types::{Field};
 use halo2_proofs::plonk::{ConstraintSystem, Expression, Column, Advice};
 use itertools::Itertools;
 
@@ -369,7 +369,7 @@ impl<F: Field, C: CellType> ConstraintBuilder<F, C> {
         self.equalities
             .iter()
             .for_each(|c| {
-                meta.enable_equality(c.clone())}
+                meta.enable_equality(*c)}
             );
     }
     
@@ -522,10 +522,12 @@ impl<F: Field, C: CellType> ConstraintBuilder<F, C> {
                     self.query_one(cell_type)
                 };
                 let name = format!("{} (stored expression)", name);
-                self.constraints.push((
-                    Box::leak(name.clone().into_boxed_str()),
-                    cell.expr() - expr.clone(),
-                ));
+                let equality = if self.region_id == 0 {
+                    (cell.expr() - expr.clone()) * self.get_condition_expr()
+                } else {
+                    cell.expr() - expr.clone()
+                };
+                self.constraints.push((Box::leak(name.clone().into_boxed_str()), equality));
                 self.stored_expressions
                     .entry(self.region_id)
                     .or_insert_with(Vec::new)
@@ -1387,7 +1389,7 @@ macro_rules! circuit {
         #[allow(unused_macros)]
         macro_rules! not {
             ($expr:expr) => {{
-                gadgets::util::not::expr($expr.expr())
+                $crate::util::not::expr($expr.expr())
             }};
         }
 

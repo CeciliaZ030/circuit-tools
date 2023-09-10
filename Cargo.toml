@@ -20,7 +20,3 @@ itertools = "0.10.3"
 [features]
 default = ["dev-graph"]
 dev-graph = ["halo2_proofs/dev-graph", "plotters"]
-
-[[example]]
-name = "circuit-layout"
-required-features = ["dev-graph"]
