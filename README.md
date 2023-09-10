@@ -88,3 +88,9 @@ impl Default for TestCellType {
     fn default() -> Self {Self::StoragePhase1}
 }
 ```
+Initialize the Constraint Builder and Cell Manager with optional challenge that's used in RLC to conbime multi-columns lookups. The Cell Manager needs a max height and this is usually the height of your Halo2 gate; a offset is also needed to query cell from columns. Offset should be set to 0 in usual case.
+```
+let mut cm = CellManager::new(5, 0);
+let mut cb: ConstraintBuilder<F, TestCellType> =  ConstraintBuilder::new(4,  Some(cm), Some(challenge));
+
+```
