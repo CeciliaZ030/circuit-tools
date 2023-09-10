@@ -126,4 +126,4 @@ meta.create_gate("Test", |meta| {
 });
 cb.build_lookups(meta);
 ```
-
+Finally in assingment, initialize `CachedRegion` as demonstrated above and use it to assign values.
