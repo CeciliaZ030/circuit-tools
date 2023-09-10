@@ -10,12 +10,13 @@ use crate::{constraint_builder:: ConstraintBuilder, cell_manager::CellType};
 
 #[derive(Clone)]
 pub struct TestConfig {
-    pub(crate) q_enable: Column<Fixed>,
-    pub(crate) a: Column<Advice>,
-    pub(crate) b: Column<Advice>,
-    pub(crate) c: Column<Fixed>,
-    pub(crate) res: Column<Advice>,
+    q_enable: Column<Fixed>,
+    a: Column<Advice>,
+    b: Column<Advice>,
+    c: Column<Fixed>,
+    res: Column<Advice>,
 }
+
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
@@ -26,27 +27,18 @@ pub enum TestCellType {
 impl CellType for TestCellType{
     type TableType = ();
 
-    fn lookup_table_type(&self) -> Option<Self::TableType> {
-        None
-    }
-    fn byte_type() -> Option<Self> {
-        None
-    }
+    fn lookup_table_type(&self) -> Option<Self::TableType> {None}
+    fn byte_type() -> Option<Self> {None}
+    fn create_type(id: usize) -> Self {Self::Dynamic(id)}
     fn storage_for_phase(phase: u8) -> Self {
         match phase {
             1 => Self::Storage,
             _ => unimplemented!()
         }
     }
-    fn create_type(id: usize) -> Self {
-        Self::Dynamic(id)
-    }
 }
-
 impl Default for TestCellType {
-    fn default() -> Self {
-        Self::Storage
-    }
+    fn default() -> Self {Self::Storage}
 }
 
 
@@ -58,7 +50,6 @@ impl TestConfig {
         let c = meta.fixed_column();
         let res = meta.advice_column();
         
-
         let mut cb: ConstraintBuilder<F, TestCellType> =  ConstraintBuilder::new(4,  None, None);
 
         meta.create_gate("Test", |meta| {
@@ -66,24 +57,24 @@ impl TestConfig {
                 // Fixed column with ifx! equivalents to selector
                 // BUT Advice does not
                 ifx!(f!(q_enable) => {
-                    // ifx!((a!(a)) => {
-                    //     require!(a!(res) => a!(b) + f!(c)); 
-                    // } elsex {
-                    //     require!(a!(res) => a!(b) + c!(r)); 
+                    ifx!{a!(a) => {
+                        require!(a!(res) => a!(b) + f!(c)); 
+                    } elsex {
+                        require!(a!(res) => a!(b) + c!(r)); 
                         
-                    // });
-                    // // Matchx! adds the same set of constraints as ifx!
-                    // matchx!(
-                    //     a!(a) => {{
-                    //         require!(a!(res) => a!(b) + f!(c)); 
-                    //     }},
-                    //     not!(a!(a)) => {{
-                    //         require!(a!(res) => a!(b) + c!(r)); 
+                    }};
+                    // Matchx! adds the same set of constraints as ifx!
+                    matchx!{(
+                        a!(a) => {
+                            require!(a!(res) => a!(b) + f!(c)); 
+                        },
+                        not!(a!(a)) => {
+                            require!(a!(res) => a!(b) + c!(r)); 
                             
-                    //     }},
-                    //     _ => unreachablex!(),
-                    // );
-                })
+                        },
+                        _ => unreachablex!(),
+                    )};
+                });
             });
             cb.build_constraints()
         });

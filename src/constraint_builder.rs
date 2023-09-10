@@ -1387,7 +1387,7 @@ macro_rules! circuit {
         #[allow(unused_macros)]
         macro_rules! not {
             ($expr:expr) => {{
-                gadgets::util::not::expr($expr.expr())
+                crate::util::not::expr($expr.expr())
             }};
         }
 
